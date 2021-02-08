@@ -29,6 +29,21 @@ endif
 
 CC 	?= gcc
 CFLAGS 	+= -MMD -Wall -DTEST
+ASTYLE	= astyle \
+	   --indent=spaces \
+	   --style=attach  \
+	   --pad-oper \
+	   --align-pointer=type \
+	   --keep-one-line-blocks \
+	   --keep-one-line-statements \
+	   --break-closing-braces \
+	   --remove-braces \
+	   --attach-return-type \
+	   --max-code-length=120 \
+	   --lineend=linux \
+	   --suffix=~ \
+	   --formatted
+
 SRCS	= $(wildcard *.c)
 OBJS 	= $(SRCS:.c=.o)
 DEPENDS	= $(SRCS:.c=.d)
@@ -40,6 +55,9 @@ test: bignum$(EXE)
 
 bignum$(EXE): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+
+astyle:
+	astyle bignum.c bignum.h
 
 clean:
 	$(RM) bignum$(EXE) $(OBJS) $(DEPENDS)

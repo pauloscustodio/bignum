@@ -69,7 +69,8 @@ void num_set_zero(Num* num) {
 void num_copy(Num* dst, const Num* src) {
     dst->negative = src->negative;
     dst->pow10 = src->pow10;
-    utstring_clear(dst->digits); utstring_concat(dst->digits, src->digits);
+    utstring_clear(dst->digits);
+    utstring_concat(dst->digits, src->digits);
 }
 
 void num_free(Num* num) {
@@ -79,9 +80,11 @@ void num_free(Num* num) {
 
 static void insert_zeros(Num* num, int zeros) {
     if (zeros > 0) {
-        UT_string* temp; utstring_new(temp);
+        UT_string* temp;
+        utstring_new(temp);
         utstring_printf(temp, "%0*d%s", zeros, 0, utstring_body(num->digits));
-        utstring_clear(num->digits); utstring_concat(num->digits, temp);
+        utstring_clear(num->digits);
+        utstring_concat(num->digits, temp);
         utstring_free(temp);
         num->pow10 += zeros;
     }
@@ -132,35 +135,35 @@ void num_init_int(Num* num, int value) {
 void num_init_str(Num* num, const char* value) {
     num->negative = false;
     while (isspace(*value) || *value == '+')
-value++;
-if (*value == '-') {
-    num->negative = true;
-    value++;
-}
-while (isspace(*value))
-value++;
-utstring_clear(num->digits);
-bool seen_dot = false, seen_digit = false;
-num->pow10 = 0;
-while (*value) {
-    if (isdigit(*value)) {
-        utstring_printf(num->digits, "%c", *value++);
-        if (!seen_dot && seen_digit)
-            num->pow10++;
-        seen_digit = true;
-    }
-    else if (!seen_dot && *value == '.') {
-        seen_dot = true;
-        if (!seen_digit) {
-            utstring_printf(num->digits, "0");
-            seen_digit = true;
-        }
+        value++;
+    if (*value == '-') {
+        num->negative = true;
         value++;
     }
-    else
-        break;
-}
-num_normalize(num);
+    while (isspace(*value))
+        value++;
+    utstring_clear(num->digits);
+    bool seen_dot = false, seen_digit = false;
+    num->pow10 = 0;
+    while (*value) {
+        if (isdigit(*value)) {
+            utstring_printf(num->digits, "%c", *value++);
+            if (!seen_dot && seen_digit)
+                num->pow10++;
+            seen_digit = true;
+        }
+        else if (!seen_dot && *value == '.') {
+            seen_dot = true;
+            if (!seen_digit) {
+                utstring_printf(num->digits, "0");
+                seen_digit = true;
+            }
+            value++;
+        }
+        else
+            break;
+    }
+    num_normalize(num);
 }
 
 void num_init_double(Num* num, double value) {
@@ -242,7 +245,8 @@ void num_to_string(UT_string* dest, const Num* num) {
 }
 
 void num_print(const Num* num) {
-    UT_string* str; utstring_new(str);
+    UT_string* str;
+    utstring_new(str);
     num_to_string(str, num);
     printf("%s", utstring_body(str));
     utstring_free(str);
@@ -494,7 +498,7 @@ void num_div(Num* quotient, Num* a, Num* b) {
         quotient_digit++;
         int cmp;
         do {
-        retry:
+retry:
             quotient_digit--;               // decrement on each pass
 
             // multipy digit by divisor
@@ -539,7 +543,7 @@ void num_div(Num* quotient, Num* a, Num* b) {
             for (int j = DIGITS(product) - 1; j >= 0; j--) {
                 int di = i + j - 1;
                 int sub = (di >= 0 ? (DIGIT(dividend, di) - '0') : 0)
-                    - (DIGIT(product, j) - '0') - borrow;
+                          - (DIGIT(product, j) - '0') - borrow;
                 if (sub < 0) {
                     sub += 10;
                     borrow = 1;
@@ -597,78 +601,162 @@ void num_div(Num* quotient, Num* a, Num* b) {
                         }while (0)
 
 int main() {
-    UT_string* text; utstring_new(text);
-    UT_string* text_; utstring_new(text_);
+    UT_string* text;
+    utstring_new(text);
+    UT_string* text_;
+    utstring_new(text_);
     Num* a = num_new();
     Num* b = num_new();
     Num* res = num_new();
     Num* tst = num_new();
 
     // init int
-    num_init_int(a, 0); IS(a, " 0"); assert(a->pow10 == 0); assert(num_is_zero(a));
-    num_init_int(a, 1); IS(a, " 1"); assert(a->pow10 == 0); assert(!num_is_zero(a));
-    num_init_int(a, -1); IS(a, "-1"); assert(a->pow10 == 0); assert(!num_is_zero(a));
-    num_init_int(a, 12345678); IS(a, " 12345678"); assert(a->pow10 == 7); assert(!num_is_zero(a));
+    num_init_int(a, 0);
+    IS(a, " 0");
+    assert(a->pow10 == 0);
+    assert(num_is_zero(a));
+    num_init_int(a, 1);
+    IS(a, " 1");
+    assert(a->pow10 == 0);
+    assert(!num_is_zero(a));
+    num_init_int(a, -1);
+    IS(a, "-1");
+    assert(a->pow10 == 0);
+    assert(!num_is_zero(a));
+    num_init_int(a, 12345678);
+    IS(a, " 12345678");
+    assert(a->pow10 == 7);
+    assert(!num_is_zero(a));
 
     // copy
-    num_copy(b, a); IS(b, " 12345678"); assert(b->pow10 == 7); assert(!num_is_zero(b));
+    num_copy(b, a);
+    IS(b, " 12345678");
+    assert(b->pow10 == 7);
+    assert(!num_is_zero(b));
 
     // num_to_string
-    num_init_int(a, 1); IS(a, " 1");
-    a->pow10++; IS(a, " 10");
-    a->pow10++; IS(a, " 100");
-    a->pow10++; IS(a, " 1000");
-    num_init_int(a, 1); IS(a, " 1");
-    a->pow10--; IS(a, " 0.1");
-    a->pow10--; IS(a, " 0.01");
-    a->pow10--; IS(a, " 0.001");
-    a->pow10--; IS(a, " 0.0001");
+    num_init_int(a, 1);
+    IS(a, " 1");
+    a->pow10++;
+    IS(a, " 10");
+    a->pow10++;
+    IS(a, " 100");
+    a->pow10++;
+    IS(a, " 1000");
+    num_init_int(a, 1);
+    IS(a, " 1");
+    a->pow10--;
+    IS(a, " 0.1");
+    a->pow10--;
+    IS(a, " 0.01");
+    a->pow10--;
+    IS(a, " 0.001");
+    a->pow10--;
+    IS(a, " 0.0001");
 
     // init string
-    num_init_str(a, "no number"); IS(a, " 0"); assert(a->pow10 == 0); assert(num_is_zero(a));
-    num_init_str(a, "123no number"); IS(a, " 123"); assert(a->pow10 == 2); assert(!num_is_zero(a));
-    num_init_str(a, "0"); IS(a, " 0"); assert(a->pow10 == 0); assert(num_is_zero(a));
-    num_init_str(a, "123.456"); IS(a, " 123.456"); assert(a->pow10 == 2); assert(!num_is_zero(a));
-    num_init_str(a, "0000123.4560000"); IS(a, " 123.456"); assert(a->pow10 == 2); assert(!num_is_zero(a));
-    num_init_str(a, "00001234560000"); IS(a, " 1234560000"); assert(a->pow10 == 9); assert(!num_is_zero(a));
-    num_init_str(a, "10"); IS(a, " 10"); assert(a->pow10 == 1); assert(!num_is_zero(a));
-    num_init_str(a, "1.0"); IS(a, " 1"); assert(a->pow10 == 0); assert(!num_is_zero(a));
-    num_init_str(a, ".10"); IS(a, " 0.1"); assert(a->pow10 == -1); assert(!num_is_zero(a));
-    num_init_str(a, "+ + -.10"); IS(a, "-0.1"); assert(a->pow10 == -1); assert(!num_is_zero(a));
+    num_init_str(a, "no number");
+    IS(a, " 0");
+    assert(a->pow10 == 0);
+    assert(num_is_zero(a));
+    num_init_str(a, "123no number");
+    IS(a, " 123");
+    assert(a->pow10 == 2);
+    assert(!num_is_zero(a));
+    num_init_str(a, "0");
+    IS(a, " 0");
+    assert(a->pow10 == 0);
+    assert(num_is_zero(a));
+    num_init_str(a, "123.456");
+    IS(a, " 123.456");
+    assert(a->pow10 == 2);
+    assert(!num_is_zero(a));
+    num_init_str(a, "0000123.4560000");
+    IS(a, " 123.456");
+    assert(a->pow10 == 2);
+    assert(!num_is_zero(a));
+    num_init_str(a, "00001234560000");
+    IS(a, " 1234560000");
+    assert(a->pow10 == 9);
+    assert(!num_is_zero(a));
+    num_init_str(a, "10");
+    IS(a, " 10");
+    assert(a->pow10 == 1);
+    assert(!num_is_zero(a));
+    num_init_str(a, "1.0");
+    IS(a, " 1");
+    assert(a->pow10 == 0);
+    assert(!num_is_zero(a));
+    num_init_str(a, ".10");
+    IS(a, " 0.1");
+    assert(a->pow10 == -1);
+    assert(!num_is_zero(a));
+    num_init_str(a, "+ + -.10");
+    IS(a, "-0.1");
+    assert(a->pow10 == -1);
+    assert(!num_is_zero(a));
 
     // num_init_double
-    num_init_double(a, 0.0); IS(a, " 0");
-    num_init_double(a, 2.0); APROX(a, 2);
-    num_init_double(a, 2e10); APROX(a, 20000000000);
-    num_init_double(a, 2e-10); APROX(a, 0.0000000002);
-    num_init_double(a, 256.0); APROX(a, 256);
-    num_init_double(a, -256.0); APROX(a, -256);
-    num_init_double(a, 0.2); APROX(a, 0.2);
-    num_init_double(a, 0.256); APROX(a, 0.256);
-    num_init_double(a, 0.256e2); APROX(a, 25.6);
-    num_init_double(a, 123.456); APROX(a, 123.456);
-    num_init_double(a, -123.456); APROX(a, -123.456);
-    num_set_zero(a); IS(a, " 0");
+    num_init_double(a, 0.0);
+    IS(a, " 0");
+    num_init_double(a, 2.0);
+    APROX(a, 2);
+    num_init_double(a, 2e10);
+    APROX(a, 20000000000);
+    num_init_double(a, 2e-10);
+    APROX(a, 0.0000000002);
+    num_init_double(a, 256.0);
+    APROX(a, 256);
+    num_init_double(a, -256.0);
+    APROX(a, -256);
+    num_init_double(a, 0.2);
+    APROX(a, 0.2);
+    num_init_double(a, 0.256);
+    APROX(a, 0.256);
+    num_init_double(a, 0.256e2);
+    APROX(a, 25.6);
+    num_init_double(a, 123.456);
+    APROX(a, 123.456);
+    num_init_double(a, -123.456);
+    APROX(a, -123.456);
+    num_set_zero(a);
+    IS(a, " 0");
 
     // align for addition
-    num_init_str(a, "123456"); IS(a, " 123456");
-    num_init_str(b, ".123456"); IS(b, " 0.123456");
+    num_init_str(a, "123456");
+    IS(a, " 123456");
+    num_init_str(b, ".123456");
+    IS(b, " 0.123456");
     align_addition(res, a, b);
     IS(a,   " 123456.000000");
     IS(b,   " 000000.123456");
     IS(res, " 000000.000000");
 
-    num_init_str(a, ".123456"); IS(a, " 0.123456");
-    num_init_str(b, "123456"); IS(b, " 123456");
+    num_init_str(a, ".123456");
+    IS(a, " 0.123456");
+    num_init_str(b, "123456");
+    IS(b, " 123456");
     align_addition(res, a, b);
     IS(a,   " 000000.123456");
     IS(b,   " 123456.000000");
     IS(res, " 000000.000000");
 
     // compare
-    num_init_int(a, 10); IS(a, " 10"); num_init_int(b, 1); IS(b, " 1"); assert(num_compare(a, b) == 1);
-    num_init_int(a, 10); IS(a, " 10"); num_init_int(b, 10); IS(b, " 10"); assert(num_compare(a, b) == 0);
-    num_init_int(a, 10); IS(a, " 10"); num_init_int(b, 100); IS(b, " 100"); assert(num_compare(a, b) == -1);
+    num_init_int(a, 10);
+    IS(a, " 10");
+    num_init_int(b, 1);
+    IS(b, " 1");
+    assert(num_compare(a, b) == 1);
+    num_init_int(a, 10);
+    IS(a, " 10");
+    num_init_int(b, 10);
+    IS(b, " 10");
+    assert(num_compare(a, b) == 0);
+    num_init_int(a, 10);
+    IS(a, " 10");
+    num_init_int(b, 100);
+    IS(b, " 100");
+    assert(num_compare(a, b) == -1);
 
     for (int i = -1; i <= 1; i++) {
         for (int j = -1; j <= 1; j++) {
@@ -681,95 +769,121 @@ int main() {
     }
 
     // add positive
-    num_init_str(a, ".123456"); IS(a, " 0.123456");
-    num_init_str(b, "123456"); IS(b, " 123456");
+    num_init_str(a, ".123456");
+    IS(a, " 0.123456");
+    num_init_str(b, "123456");
+    IS(b, " 123456");
     add_positive(res, a, b);
     IS(a, " 0.123456");
     IS(b, " 123456");
     IS(res, " 123456.123456");
 
-    num_init_str(a, "99999999"); IS(a, " 99999999");
-    num_init_str(b, "99999999"); IS(b, " 99999999");
+    num_init_str(a, "99999999");
+    IS(a, " 99999999");
+    num_init_str(b, "99999999");
+    IS(b, " 99999999");
     add_positive(res, a, b);
     IS(a, " 99999999");
     IS(b, " 99999999");
     IS(res, " 199999998");
 
     // sub positive
-    num_init_str(a, "199999998"); IS(a, " 199999998");
-    num_init_str(b, "99999999"); IS(b, " 99999999");
+    num_init_str(a, "199999998");
+    IS(a, " 199999998");
+    num_init_str(b, "99999999");
+    IS(b, " 99999999");
     sub_positive(res, a, b);
     IS(a, " 199999998");
     IS(b, " 99999999");
     IS(res, " 99999999");
 
-    num_init_str(a, "99999999"); IS(a, " 99999999");
-    num_init_str(b, "199999998"); IS(b, " 199999998");
+    num_init_str(a, "99999999");
+    IS(a, " 99999999");
+    num_init_str(b, "199999998");
+    IS(b, " 199999998");
     sub_positive(res, a, b);
     IS(a, " 99999999");
     IS(b, " 199999998");
     IS(res, "-99999999");
 
     // multiplication
-    num_init_str(a, "123.456"); IS(a, " 123.456");
-    num_init_str(b, "999.9"); IS(b, " 999.9");
+    num_init_str(a, "123.456");
+    IS(a, " 123.456");
+    num_init_str(b, "999.9");
+    IS(b, " 999.9");
     num_mult(res, a, b);
     IS(a, " 123.456");
     IS(b, " 999.9");
     IS(res, " 123443.6544");
 
     // division
-    num_init_str(a, "123443.6544"); IS(a, " 123443.6544");
-    num_init_str(b, "999.9"); IS(b, " 999.9");
+    num_init_str(a, "123443.6544");
+    IS(a, " 123443.6544");
+    num_init_str(b, "999.9");
+    IS(b, " 999.9");
     num_div(res, a, b);
     IS(a, " 123443.6544");
     IS(b, " 999.9");
     IS(res, " 123.456");
 
-    num_init_str(a, "10"); IS(a, " 10");
-    num_init_str(b, "3"); IS(b, " 3");
+    num_init_str(a, "10");
+    IS(a, " 10");
+    num_init_str(b, "3");
+    IS(b, " 3");
     num_div(res, a, b);
     IS(a, " 10");
     IS(b, " 3");
     APROX(res, 10.0 / 3.0);
 
-    num_init_str(a, "10"); IS(a, " 10");
-    num_init_str(b, "1"); IS(b, " 1");
+    num_init_str(a, "10");
+    IS(a, " 10");
+    num_init_str(b, "1");
+    IS(b, " 1");
     num_div(res, a, b);
     IS(a, " 10");
     IS(b, " 1");
     IS(res, " 10");
 
-    num_init_str(a, "4"); IS(a, " 4");
-    num_init_str(b, "1"); IS(b, " 1");
+    num_init_str(a, "4");
+    IS(a, " 4");
+    num_init_str(b, "1");
+    IS(b, " 1");
     num_div(res, a, b);
     IS(a, " 4");
     IS(b, " 1");
     IS(res, " 4");
 
-    num_init_str(a, "4"); IS(a, " 4");
-    num_init_str(b, "997"); IS(b, " 997");
+    num_init_str(a, "4");
+    IS(a, " 4");
+    num_init_str(b, "997");
+    IS(b, " 997");
     num_div(res, a, b);
     IS(a, " 4");
     IS(b, " 997");
     APROX(res, 4.0 / 997.0);
 
-    num_init_str(a, "0"); IS(a, " 0");
-    num_init_str(b, "1"); IS(b, " 1");
+    num_init_str(a, "0");
+    IS(a, " 0");
+    num_init_str(b, "1");
+    IS(b, " 1");
     num_div(res, a, b);
     IS(a, " 0");
     IS(b, " 1");
     IS(res, " 0");
 
-    num_init_str(a, "1"); IS(a, " 1");
-    num_init_str(b, "1"); IS(b, " 1");
+    num_init_str(a, "1");
+    IS(a, " 1");
+    num_init_str(b, "1");
+    IS(b, " 1");
     num_div(res, a, b);
     IS(a, " 1");
     IS(b, " 1");
     IS(res, " 1");
 
-    num_init_str(a, "1"); IS(a, " 1");
-    num_init_str(b, "1"); IS(b, " 1");
+    num_init_str(a, "1");
+    IS(a, " 1");
+    num_init_str(b, "1");
+    IS(b, " 1");
     num_div(res, a, b);
     IS(a, " 1");
     IS(b, " 1");
@@ -782,17 +896,21 @@ int main() {
                 num_init_double(b, j);
 
                 // addition
-                num_add(res, a, b); APROX(res, i*k + j);
+                num_add(res, a, b);
+                APROX(res, i*k + j);
 
                 // subtraction
-                num_sub(res, a, b); APROX(res, i*k - j);
+                num_sub(res, a, b);
+                APROX(res, i*k - j);
 
                 // multiplication
-                num_mult(res, a, b); APROX(res, i*k * j);
+                num_mult(res, a, b);
+                APROX(res, i*k * j);
 
                 // division
                 if (j != 0) {
-                    num_div(res, a, b); APROX(res, i * k / j);
+                    num_div(res, a, b);
+                    APROX(res, i * k / j);
                 }
             }
         }
