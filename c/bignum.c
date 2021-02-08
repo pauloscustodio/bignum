@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // maximum decimals for division
 #ifdef TEST
-int div_max_digits = 16;
+int div_max_digits = 32;
 #else
 int div_max_digits = 2048;
 #endif
@@ -457,6 +457,8 @@ void num_div(Num* quotient, Num* a, Num* b) {
 	Num* dividend = num_new();
 	num_copy(dividend, a);
 
+	Num* save_dividend = num_new();
+
 	// make divisor with one extra left zero, to allow for partial products to overflow
 	Num* divisor = num_new();
 	num_copy(divisor, b);
@@ -487,11 +489,12 @@ void num_div(Num* quotient, Num* a, Num* b) {
 
 		// divide by first significant digit of divisor to estimate quotient
 		int quotient_digit = MIN(9, dividend_digit / (DIGIT(divisor, 1) - '0'));
-		
+
 		// loop if estimate was wrong
 		quotient_digit++;
 		int cmp;
 		do {
+		retry:
 			quotient_digit--;				// decrement on each pass
 
 			// multipy digit by divisor
@@ -507,9 +510,9 @@ void num_div(Num* quotient, Num* a, Num* b) {
 			else if (quotient_digit > 1) {
 				int carry = 0;
 				for (int j = DIGITS(divisor) - 1; j >= 0; j--) {
-					int temp = (DIGIT(divisor, j) - '0') * quotient_digit + carry;
-					DIGIT(product, j) = temp % 10 + '0';
-					carry = temp / 10;
+					int prod = (DIGIT(divisor, j) - '0') * quotient_digit + carry;
+					DIGIT(product, j) = prod % 10 + '0';
+					carry = prod / 10;
 				}
 				assert(carry == 0);			// because we added an extra zero
 			}
@@ -530,21 +533,25 @@ void num_div(Num* quotient, Num* a, Num* b) {
 
 		// subtract product from dividend
 		if (!num_is_zero(product)) {
+			num_copy(save_dividend, dividend);			// make a copy in case we need to revert
+
 			int borrow = 0;
 			for (int j = DIGITS(product) - 1; j >= 0; j--) {
 				int di = i + j - 1;
-				int temp = (di >= 0 ? (DIGIT(dividend, di) - '0') : 0)
+				int sub = (di >= 0 ? (DIGIT(dividend, di) - '0') : 0)
 					- (DIGIT(product, j) - '0') - borrow;
-				if (temp < 0) {
-					temp += 10;
+				if (sub < 0) {
+					sub += 10;
 					borrow = 1;
 				}
 				else
 					borrow = 0;
 				if (di >= 0)
-					DIGIT(dividend, di) = temp + '0';
-				else
-					assert(temp == 0);
+					DIGIT(dividend, di) = sub + '0';
+				else if (sub != 0) {					// estimate failed, retry
+					num_copy(dividend, save_dividend);	// revert dividend
+					goto retry;
+				}
 			}
 			assert(borrow == 0);
 		}
@@ -553,8 +560,9 @@ void num_div(Num* quotient, Num* a, Num* b) {
 		if (num_is_zero(dividend))
 			break;
 		else if (i + 1 + width >= DIGITS(dividend)) {	// last pass through loop
-			if (DIGITS(dividend) < div_max_digits) {
-				int zeros = div_max_digits - DIGITS(dividend);
+			int min_digits = MAX(div_max_digits, 2 * MAX(DIGITS(a), DIGITS(b)));
+			if (DIGITS(dividend) < min_digits) {
+				int zeros = min_digits - DIGITS(dividend);
 				append_zeros(dividend, zeros);
 			}
 		}
@@ -564,20 +572,14 @@ void num_div(Num* quotient, Num* a, Num* b) {
 	num_normalize(quotient);
 
 	// cleanup
+	num_free(save_dividend);
 	num_free(dividend);
 	num_free(divisor);
 	num_free(product);
 }
 
-#if 0
-#endif
-
 #ifdef TEST
-#define PRINT(num)		do{	num_to_string(text_, num); \
-							printf("%s\n", utstring_body(text_)); \
-						}while(0)
-
-#define IS(num, str)	do{	PRINT(num); \
+#define IS(num, str)	do{	num_to_string(text_, num); \
 							if (0 != strcmp(str, utstring_body(text_))) { \
 								printf("Got %s, expected %s\n", \
 										utstring_body(text_), str); \
@@ -586,20 +588,21 @@ void num_div(Num* quotient, Num* a, Num* b) {
 						}while(0)
 
 #define APROX(num, exp)	do{ double got = num_to_double(num); \
-							double delta = fabs(got - (exp)); \
-							if (delta > 1e-3) { \
-								printf("got %f, expected %f, delta %f\n", \
-									   got, (double)(exp), delta); assert(0); \
-							} else printf("%f\n", got); \
+							double err = fabs(got - (exp)); \
+							if ( (exp) != 0.0 ) err /= (exp); \
+							if (err >= 0.01) { \
+								printf("got %g, expected %g, err %g\n", \
+									   got, (double)(exp), err); assert(0); \
+							} \
 						}while (0)
 
 int main() {
 	UT_string* text; utstring_new(text);
 	UT_string* text_; utstring_new(text_);
-	Num* a = num_new(); PRINT(a);
-	Num* b = num_new(); PRINT(b);
-	Num* res = num_new(); PRINT(res);
-	Num* tst = num_new(); PRINT(tst);
+	Num* a = num_new(); 
+	Num* b = num_new(); 
+	Num* res = num_new(); 
+	Num* tst = num_new(); 
 
 	// init int
 	num_init_int(a, 0); IS(a, " 0"); assert(a->pow10 == 0); assert(num_is_zero(a));
@@ -634,7 +637,7 @@ int main() {
 	num_init_str(a, "+ + -.10"); IS(a, "-0.1"); assert(a->pow10 == -1); assert(!num_is_zero(a));
 
 	// num_init_double
-	num_init_double(a, 0.0); APROX(a, 0);
+	num_init_double(a, 0.0); IS(a, " 0");
 	num_init_double(a, 2.0); APROX(a, 2);
 	num_init_double(a, 2e10); APROX(a, 20000000000);
 	num_init_double(a, 2e-10); APROX(a, 0.0000000002);
@@ -669,8 +672,8 @@ int main() {
 
 	for (int i = -1; i <= 1; i++) {
 		for (int j = -1; j <= 1; j++) {
-			num_init_int(a, i); PRINT(a);
-			num_init_int(b, j); PRINT(b);
+			num_init_int(a, i); 
+			num_init_int(b, j); 
 			if (i < j) assert(num_compare(a, b) == -1);
 			else if (i == j) assert(num_compare(a, b) == 0);
 			else assert(num_compare(a, b) == 1);
@@ -707,56 +710,6 @@ int main() {
 	IS(b, " 199999998");
 	IS(res, "-99999999");
 
-	// addition
-	for (int i = -10; i <= 10; i++) {
-		for (int j = -10; j <= 10; j++) {
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)i / 10);
-			num_init_str(a, utstring_body(text));
-			PRINT(a);
-
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)j / 10);
-			num_init_str(b, utstring_body(text));
-			PRINT(b);
-
-			num_add(res, a, b);
-			PRINT(res);
-
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)i / 10 + (double)j / 10);
-			num_init_str(tst, utstring_body(text));
-			num_to_string(text, tst);
-			PRINT(tst);
-			IS(res, utstring_body(text));
-		}
-	}
-
-	// subtraction
-	for (int i = -10; i <= 10; i++) {
-		for (int j = -10; j <= 10; j++) {
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)i / 10);
-			num_init_str(a, utstring_body(text));
-			PRINT(a);
-
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)j / 10);
-			num_init_str(b, utstring_body(text));
-			PRINT(b);
-
-			num_sub(res, a, b);
-			PRINT(res);
-
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)i / 10 - (double)j / 10);
-			num_init_str(tst, utstring_body(text));
-			num_to_string(text, tst);
-			PRINT(tst);
-			IS(res, utstring_body(text));
-		}
-	}
-
 	// multiplication
 	num_init_str(a, "123.456"); IS(a, " 123.456");
 	num_init_str(b, "999.9"); IS(b, " 999.9");
@@ -764,30 +717,6 @@ int main() {
 	IS(a, " 123.456");
 	IS(b, " 999.9");
 	IS(res, " 123443.6544");
-
-	for (int i = -100; i <= 100; i++) {
-		for (int j = -100; j <= 100; j++) {
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)i / 10);
-			num_init_str(a, utstring_body(text));
-			PRINT(a);
-
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)j / 10);
-			num_init_str(b, utstring_body(text));
-			PRINT(b);
-
-			num_mult(res, a, b);
-			PRINT(res);
-
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)i / 10 * (double)j / 10);
-			num_init_str(tst, utstring_body(text));
-			num_to_string(text, tst);
-			PRINT(tst);
-			IS(res, utstring_body(text));
-		}
-	}
 
 	// division
 	num_init_str(a, "123443.6544"); IS(a, " 123443.6544");
@@ -802,7 +731,7 @@ int main() {
 	num_div(res, a, b);
 	IS(a, " 10");
 	IS(b, " 3");
-	IS(res, " 3.333333333333");
+	APROX(res, 10.0 / 3.0);
 
 	num_init_str(a, "10"); IS(a, " 10");
 	num_init_str(b, "1"); IS(b, " 1");
@@ -818,14 +747,12 @@ int main() {
 	IS(b, " 1");
 	IS(res, " 4");
 
-	int old_div_max_digits = div_max_digits; div_max_digits = 2048;
 	num_init_str(a, "4"); IS(a, " 4");
 	num_init_str(b, "997"); IS(b, " 997");
 	num_div(res, a, b);
 	IS(a, " 4");
 	IS(b, " 997");
 	APROX(res, 4.0 / 997.0);
-	div_max_digits = old_div_max_digits;
 
 	num_init_str(a, "0"); IS(a, " 0");
 	num_init_str(b, "1"); IS(b, " 1");
@@ -848,27 +775,26 @@ int main() {
 	IS(b, " 1");
 	IS(res, " 1");
 
-	for (int i = -100; i <= 100; i++) {
-		for (int j = -100; j <= 100; j++) {
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)i / 10);
-			num_init_str(a, utstring_body(text));
-			PRINT(a);
+	for (double i = -10.0; i <= 10.0; i += 0.1) {
+		for (double j = -10.0; j <= 10.0; j += 0.1) {
+			for (double k = 0.01; k <= 10; k *= 10) {
+				num_init_double(a, i*k); 
+				num_init_double(b, j); 
 
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)j / 10);
-			num_init_str(b, utstring_body(text));
-			PRINT(b);
+				// addition
+				num_add(res, a, b); APROX(res, i*k + j);
 
-			num_mult(res, a, b);
-			PRINT(res);
+				// subtraction
+				num_sub(res, a, b); APROX(res, i*k - j);
 
-			utstring_clear(text);
-			utstring_printf(text, "%f", (double)i / 10 * (double)j / 10);
-			num_init_str(tst, utstring_body(text));
-			num_to_string(text, tst);
-			PRINT(tst);
-			IS(res, utstring_body(text));
+				// multiplication
+				num_mult(res, a, b); APROX(res, i*k * j);
+
+				// division
+				if (j != 0) {
+					num_div(res, a, b); APROX(res, i * k / j);
+				}
+			}
 		}
 	}
 
@@ -878,6 +804,7 @@ int main() {
 	num_free(tst);
 	utstring_free(text);
 	utstring_free(text_);
+	printf("All tests passed\n");
 }
 #endif
 
