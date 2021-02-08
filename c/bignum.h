@@ -28,12 +28,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdbool.h>
 #include "utstring.h"
 
-extern int div_max_digits;	// maximum decimals for division
+extern int div_max_digits;  // maximum decimals for division
 
 typedef struct Num {
-	bool negative;			// true if negative
-	int  pow10;				// power of 10 to multiply first digit
-	UT_string* digits;		// ASCII digits 0-9
+    bool negative;          // true if negative
+    int  pow10;             // power of 10 to multiply first digit
+    UT_string* digits;      // ASCII digits 0-9
 } Num;
 
 Num* num_new();
