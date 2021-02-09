@@ -49,7 +49,6 @@ void num_to_string(UT_string* dest, const Num* num);
 void num_print(const Num* num);
 bool num_is_zero(Num* num);
 int num_compare(Num* a, Num* b);
-int num_digits(Num* num);
 void num_add(Num* res, Num* a, Num* b);
 void num_sub(Num* res, Num* a, Num* b);
 void num_mult(Num* res, Num* a, Num* b);

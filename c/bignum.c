@@ -284,8 +284,26 @@ bool num_is_zero(Num* num) {
 
 static int compare_1(Num* a, Num* b) {
     if (!a->negative) {                     // A >= 0
-        if (!b->negative)                   // A >= 0 && B >= 0
-            return strcmp(&DIGIT(a, 0), &DIGIT(b, 0));
+        if (!b->negative) {                 // A >= 0 && B >= 0
+            if (a->pow10 > b->pow10)
+                return 1;
+            else if (a->pow10 < b->pow10)
+                return -1;
+            else {
+                int d = MAX(DIGITS(a), DIGITS(b));
+                for (int i = 0; i < d; i++) {
+                    if (i >= DIGITS(a))
+                        return -1;
+                    else if (i >= DIGITS(b))
+                        return 1;
+                    else if (DIGIT(a, i) > DIGIT(b, i))
+                        return 1;
+                    else if (DIGIT(a, i) < DIGIT(b, i))
+                        return -1;
+                }
+                return 0;
+            }
+        }
         else                                // A >= 0 && B < 0
             return 1;
     }
@@ -304,15 +322,9 @@ static int compare_1(Num* a, Num* b) {
 }
 
 int num_compare(Num* a, Num* b) {
-    align_addition(NULL, a, b);
-    int cmp = compare_1(a, b);
     num_normalize(a);
     num_normalize(b);
-    return cmp;
-}
-
-int num_digits(Num* num) {
-    return DIGITS(num);
+    return compare_1(a, b);
 }
 
 static void add_positive(Num* res, Num* a, Num* b) {
@@ -335,7 +347,6 @@ static void add_positive(Num* res, Num* a, Num* b) {
 }
 
 static void sub_positive_1(Num* res, Num* a, Num* b) {
-    // subtract digits
     align_addition(res, a, b);
     int borrow = 0;
     for (int i = DIGITS(res) - 1; i >= 0; i--) {
@@ -583,12 +594,18 @@ retry:
 }
 
 #ifdef TEST
+#include <time.h>
+
+int test_num;
+#define OK()			printf("Ok %d\n", ++test_num)
+#define CHECK(f)		if (f) OK(); else printf("Nok %d\n", ++test_num)
+
 #define IS(num, str)    do{ num_to_string(text_, num); \
                             if (0 != strcmp(str, utstring_body(text_))) { \
                                 printf("Got %s, expected %s\n", \
                                         utstring_body(text_), str); \
-                                assert(0); \
-                            } \
+                                CHECK(0); \
+                            } else OK(); \
                         }while(0)
 
 #define APROX(num, exp) do{ double got = num_to_double(num); \
@@ -596,11 +613,13 @@ retry:
                             if ( (exp) != 0.0 ) err /= (exp); \
                             if (err >= 0.01) { \
                                 printf("got %g, expected %g, err %g\n", \
-                                       got, (double)(exp), err); assert(0); \
-                            } \
+                                       got, (double)(exp), err); CHECK(0); \
+                            } else OK(); \
                         }while (0)
 
 int main() {
+    time_t t0 = time(NULL);
+
     UT_string* text;
     utstring_new(text);
     UT_string* text_;
@@ -613,26 +632,26 @@ int main() {
     // init int
     num_init_int(a, 0);
     IS(a, " 0");
-    assert(a->pow10 == 0);
-    assert(num_is_zero(a));
+    CHECK(a->pow10 == 0);
+    CHECK(num_is_zero(a));
     num_init_int(a, 1);
     IS(a, " 1");
-    assert(a->pow10 == 0);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == 0);
+    CHECK(!num_is_zero(a));
     num_init_int(a, -1);
     IS(a, "-1");
-    assert(a->pow10 == 0);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == 0);
+    CHECK(!num_is_zero(a));
     num_init_int(a, 12345678);
     IS(a, " 12345678");
-    assert(a->pow10 == 7);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == 7);
+    CHECK(!num_is_zero(a));
 
     // copy
     num_copy(b, a);
     IS(b, " 12345678");
-    assert(b->pow10 == 7);
-    assert(!num_is_zero(b));
+    CHECK(b->pow10 == 7);
+    CHECK(!num_is_zero(b));
 
     // num_to_string
     num_init_int(a, 1);
@@ -657,44 +676,44 @@ int main() {
     // init string
     num_init_str(a, "no number");
     IS(a, " 0");
-    assert(a->pow10 == 0);
-    assert(num_is_zero(a));
+    CHECK(a->pow10 == 0);
+    CHECK(num_is_zero(a));
     num_init_str(a, "123no number");
     IS(a, " 123");
-    assert(a->pow10 == 2);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == 2);
+    CHECK(!num_is_zero(a));
     num_init_str(a, "0");
     IS(a, " 0");
-    assert(a->pow10 == 0);
-    assert(num_is_zero(a));
+    CHECK(a->pow10 == 0);
+    CHECK(num_is_zero(a));
     num_init_str(a, "123.456");
     IS(a, " 123.456");
-    assert(a->pow10 == 2);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == 2);
+    CHECK(!num_is_zero(a));
     num_init_str(a, "0000123.4560000");
     IS(a, " 123.456");
-    assert(a->pow10 == 2);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == 2);
+    CHECK(!num_is_zero(a));
     num_init_str(a, "00001234560000");
     IS(a, " 1234560000");
-    assert(a->pow10 == 9);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == 9);
+    CHECK(!num_is_zero(a));
     num_init_str(a, "10");
     IS(a, " 10");
-    assert(a->pow10 == 1);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == 1);
+    CHECK(!num_is_zero(a));
     num_init_str(a, "1.0");
     IS(a, " 1");
-    assert(a->pow10 == 0);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == 0);
+    CHECK(!num_is_zero(a));
     num_init_str(a, ".10");
     IS(a, " 0.1");
-    assert(a->pow10 == -1);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == -1);
+    CHECK(!num_is_zero(a));
     num_init_str(a, "+ + -.10");
     IS(a, "-0.1");
-    assert(a->pow10 == -1);
-    assert(!num_is_zero(a));
+    CHECK(a->pow10 == -1);
+    CHECK(!num_is_zero(a));
 
     // num_init_double
     num_init_double(a, 0.0);
@@ -746,25 +765,63 @@ int main() {
     IS(a, " 10");
     num_init_int(b, 1);
     IS(b, " 1");
-    assert(num_compare(a, b) == 1);
+    CHECK(num_compare(a, b) == 1);
+
     num_init_int(a, 10);
     IS(a, " 10");
     num_init_int(b, 10);
     IS(b, " 10");
-    assert(num_compare(a, b) == 0);
+    CHECK(num_compare(a, b) == 0);
+
     num_init_int(a, 10);
     IS(a, " 10");
     num_init_int(b, 100);
     IS(b, " 100");
-    assert(num_compare(a, b) == -1);
+    CHECK(num_compare(a, b) == -1);
+
+    num_init_int(a, 10);
+    IS(a, " 111");
+    num_init_int(b, 1);
+    IS(b, " 1111");
+    CHECK(num_compare(a, b) == -1);
+
+    num_init_int(a, 10);
+    IS(a, " 111");
+    num_init_int(b, 1);
+    IS(b, " 11");
+    CHECK(num_compare(a, b) == 1);
+
+    num_init_int(a, 10);
+    IS(a, " 111");
+    num_init_int(b, 1);
+    IS(b, " 111");
+    CHECK(num_compare(a, b) == 0);
+
+    num_init_int(a, 10);
+    IS(a, " 1110");
+    num_init_int(b, 1);
+    IS(b, " 1111");
+    CHECK(num_compare(a, b) == 1);
+
+    num_init_int(a, 10);
+    IS(a, " 1111");
+    num_init_int(b, 1);
+    IS(b, " 1111");
+    CHECK(num_compare(a, b) == 0);
+
+    num_init_int(a, 10);
+    IS(a, " 1112");
+    num_init_int(b, 1);
+    IS(b, " 1111");
+    CHECK(num_compare(a, b) == -1);
 
     for (int i = -1; i <= 1; i++) {
         for (int j = -1; j <= 1; j++) {
             num_init_int(a, i);
             num_init_int(b, j);
-            if (i < j) assert(num_compare(a, b) == -1);
-            else if (i == j) assert(num_compare(a, b) == 0);
-            else assert(num_compare(a, b) == 1);
+            if (i < j) CHECK(num_compare(a, b) == -1);
+            else if (i == j) CHECK(num_compare(a, b) == 0);
+            else CHECK(num_compare(a, b) == 1);
         }
     }
 
@@ -922,7 +979,8 @@ int main() {
     num_free(tst);
     utstring_free(text);
     utstring_free(text_);
-    printf("All tests passed\n");
+
+    printf("All tests passed in %ld seconds\n", (long)(time(NULL) - t0));
 }
 #endif
 
