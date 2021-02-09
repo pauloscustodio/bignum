@@ -1,4 +1,6 @@
-Toy-bignum package, developed just for the fun of it
+# bignum
+
+Toy-bignum package, developed just for the fun of it.
 
 Copyright (c) 2021, Paulo Custodio
 All rights reserved.
@@ -6,7 +8,7 @@ All rights reserved.
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
-    * Redistributions of source code must retain the above copyright
+      Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
