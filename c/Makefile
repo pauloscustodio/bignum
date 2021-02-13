@@ -60,6 +60,6 @@ astyle:
 	astyle bignum.c bignum.h
 
 clean:
-	$(RM) bignum$(EXE) $(OBJS) $(DEPENDS)
+	$(RM) bignum$(EXE) $(OBJS) $(DEPENDS) *.bak *~
 
 -include $(DEPENDS)

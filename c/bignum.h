@@ -26,30 +26,38 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 #include "utstring.h"
 
-extern int div_max_digits;  // maximum decimals for division
+#ifndef NUM_FRAC_SIZE
+#  ifdef TEST
+#    define NUM_FRAC_SIZE 16
+#  else
+#    define NUM_FRAC_SIZE 1024
+#  endif
+#endif
+
+typedef uint8_t digit_t;
+#define NUM_BASE 10
 
 typedef struct Num {
-    bool negative;          // true if negative
-    int  pow10;             // power of 10 to multiply first digit
-    UT_string* digits;      // ASCII digits 0-9
+    bool    negative;               // true if negative
+    int     exp;                    // power of 10 to multiply first digit
+    int     n, size;                // number of digits in frac, total size of frac
+    digit_t frac[NUM_FRAC_SIZE];    // digits 0-9
 } Num;
 
-Num* num_new();
-void num_set_zero(Num* num);
-void num_copy(Num* dst, const Num* src);
-void num_free(Num* num);
-void num_normalize(Num* num);
-void num_init_int(Num* num, int value);
-void num_init_str(Num* num, const char* value);
-void num_init_double(Num* num, double value);
-double num_to_double(const Num* num);
-void num_to_string(UT_string* dest, const Num* num);
+void num_init_zero(Num* num);
+bool num_is_zero(const Num* num);
+void num_to_str(UT_string* out, const Num* num);
 void num_print(const Num* num);
-bool num_is_zero(Num* num);
-int num_compare(Num* a, Num* b);
-void num_add(Num* res, Num* a, Num* b);
-void num_sub(Num* res, Num* a, Num* b);
-void num_mult(Num* res, Num* a, Num* b);
-void num_div(Num* quotient, Num* a, Num* b);
+void num_normalize(Num* num);
+void num_init_int(Num* num, long long value);
+void num_init_exp(Num* num, long long value, int exp);
+void num_init_double(Num* num, long double value);
+long double num_to_double(const Num* num);
+int num_compare(const Num* a, const Num* b);
+void num_add(Num* res, const Num* a, const Num* b);
+void num_sub(Num* res, const Num* a, const Num* b);
+void num_mult(Num* res, const Num* a, const Num* b);
+void num_div(Num* res, const Num* a, const Num* b);
