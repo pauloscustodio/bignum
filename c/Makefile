@@ -28,7 +28,7 @@ else
 endif
 
 CC 	?= gcc
-CFLAGS 	+= -MMD -Wall -DTEST
+CFLAGS 	+= -Wall
 ASTYLE	= astyle \
 	   --indent=spaces \
 	   --style=attach  \
@@ -45,21 +45,21 @@ ASTYLE	= astyle \
 	   --formatted
 
 SRCS	= $(wildcard *.c)
-OBJS 	= $(SRCS:.c=.o)
-DEPENDS	= $(SRCS:.c=.d)
+HDRS	= $(wildcard *.h)
 
-all: bignum$(EXE)
+all: bignum$(EXE) leibnitz-pi$(EXE)
 
 test: bignum$(EXE)
 	./bignum$(EXE)
 
-bignum$(EXE): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+bignum$(EXE): $(SRCS) $(HDRS)
+	$(CC) $(CFLAGS) -DTEST -o $@ $(SRCS) $(LDFLAGS)
+
+leibnitz-pi$(EXE): $(SRCS) $(HDRS)
+	$(CC) $(CFLAGS) -o $@ $(SRCS) $(LDFLAGS)
 
 astyle:
-	astyle bignum.c bignum.h
+	astyle $(SRCS) bignum.h
 
 clean:
-	$(RM) bignum$(EXE) $(OBJS) $(DEPENDS) *.bak *~
-
--include $(DEPENDS)
+	$(RM) bignum$(EXE) leibnitz-pi$(EXE) $(OBJS) *.bak *~ *.orig

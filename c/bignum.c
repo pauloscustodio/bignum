@@ -118,6 +118,7 @@ void num_print(const Num* num) {
     utstring_free(str);
 }
 
+#ifdef TEST
 static void dbl_to_str(UT_string* out, const Dbl* dbl) {
     utstring_clear(out);
     if (num_is_zero(&dbl->num))
@@ -125,6 +126,7 @@ static void dbl_to_str(UT_string* out, const Dbl* dbl) {
     else
         num_to_str(out, &dbl->num);
 }
+#endif
 
 static void ripple_add(Num* num, int idx, int value);
 
@@ -231,11 +233,13 @@ static void init_int(Num* num, long long value) {
         insert_digits(num, (int)value);
 }
 
+#ifdef TEST
 static void dbl_init_int(Dbl* dbl, long long value) {
     dbl_init_zero(dbl);
     init_int(&dbl->num, value);
     dbl_normalize(dbl);
 }
+#endif
 
 void num_init_int(Num* num, long long value) {
     num_init_zero(num);
@@ -278,12 +282,14 @@ static void init_double(Num* num, long double value) {
         ripple_add(num, num->n - 1, 1);
 }
 
+#ifdef TEST
 static void dbl_init_double(Dbl* dbl, long double value) {
     dbl_init_zero(dbl);
     if (value != 0.0)
         init_double(&dbl->num, value);
     dbl_normalize(dbl);
 }
+#endif
 
 void num_init_double(Num* num, long double value) {
     num_init_zero(num);
@@ -307,9 +313,11 @@ long double num_to_double(const Num* num) {
     return value;
 }
 
+#ifdef TEST
 static long double dbl_to_double(const Dbl* dbl) {
     return num_to_double(&dbl->num);
 }
+#endif
 
 static int compare(Num* a, Num* b) {
     if (num_is_zero(a)) {                   // A == 0
